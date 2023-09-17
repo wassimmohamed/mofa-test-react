@@ -304,8 +304,9 @@ export const studentsSlice = createSlice({
         builder.addCase(deleteStudentFamilyMember.pending, (state) => {
         });
         builder.addCase(deleteStudentFamilyMember.fulfilled, (state, action) => {
-            const member = state.selectedStudentFamilyMembers.filter((fm) => (fm.id === action.payload.id));
-            member.nationalityId = action.payload.nationalityId;
+            debugger;
+            const members = state.selectedStudentFamilyMembers.filter((fm) => (fm.id !== action.payload.payload));
+            state.selectedStudentFamilyMembers = members;
             state.notificationMessage = 'Deleted Successfully';
             state.notificationType = NotificationType.Info;
         });
