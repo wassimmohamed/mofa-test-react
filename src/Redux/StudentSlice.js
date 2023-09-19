@@ -28,9 +28,13 @@ export const getStudents = createAsyncThunk(
 export const addSudent = createAsyncThunk(
     'students/addStudent',
     async (payload, thunkAPI) => {
-        const res = await axios.post('/Students', payload);
-        const data = await res.data;
-        thunkAPI.dispatch(updateStudentNationality({ studentId: data.id, nationalityId: payload.nationalityId }));
+        const res = await axios.post('/Students', payload.selectedStudent);
+        const data = await res.data;        
+        thunkAPI.dispatch(updateStudentNationality({ studentId: data.id, nationalityId: payload.selectedStudent.nationalityId }));
+        for (let index = 0; index < payload.selectedStudentFamilyMembers.length; index++) {
+            const fm = payload.selectedStudentFamilyMembers[index];            
+            thunkAPI.dispatch(addFamilyMember({...fm, studentInfo: data}));
+        }
         thunkAPI.dispatch(getStudents());
         return data;
     }
@@ -39,9 +43,22 @@ export const addSudent = createAsyncThunk(
 export const updateStudent = createAsyncThunk(
     'students/updateStudent',
     async (payload, thunkAPI) => {
-        const res = await axios.put(`/Students/${payload.id}`, payload);
+        const res = await axios.put(`/Students/${payload.selectedStudent.id}`, payload.selectedStudent);
         const data = await res.data;
-        thunkAPI.dispatch(updateStudentNationality({ studentId: payload.id, nationalityId: payload.nationalityId }));
+        thunkAPI.dispatch(updateStudentNationality({ studentId: payload.selectedStudent.id, nationalityId: payload.selectedStudent.nationalityId }));
+        
+for (let index = 0; index < payload.selectedStudentFamilyMembers.length; index++) {
+    const fm = payload.selectedStudentFamilyMembers[index];
+    if( isNaN(Number(fm.id)))
+    {
+        debugger;
+        thunkAPI.dispatch(addFamilyMember(fm));        
+    }
+    else{
+        thunkAPI.dispatch(updateFamilyMember(fm));
+    }
+}
+
         thunkAPI.dispatch(getStudents());
         return data;
     }
@@ -96,7 +113,7 @@ export const getRelationships = createAsyncThunk(
 export const addFamilyMember = createAsyncThunk(
     'students/addFamilyMember',
     async (payload, thunkAPI) => {
-        const res = await axios.post(`/Students/${payload.studentId}/FamilyMembers`, { ...payload, id: 0 });
+        const res = await axios.post(`/Students/${(payload.studentId??0) > 0?payload.studentId:  payload.studentInfo.id}/FamilyMembers`, { ...payload, id: 0 });
         const data = await res.data;
         thunkAPI.dispatch(updateFamilyMemberNationality({ id: data.id, nationalityId: payload.nationalityId }));
         return { tempId: payload.id, data: data };
@@ -152,7 +169,13 @@ export const studentsSlice = createSlice({
             state.selectedStudent = state.students.find((s) => (s.id === action.payload));
         },
         clearSelection: (state, action) => {
-            state.selectedStudent = null;
+            state.selectedStudent = {
+                id:0,
+                firstName:'',
+                lastName:'',
+                dateOfBirth: new Date().toISOString(),
+                nationalityId: 1
+            };
             state.selectedStudentFamilyMembers = [];
         },
         clearNotification:(state)=>{
@@ -169,8 +192,31 @@ export const studentsSlice = createSlice({
                 relationshipId: 0
             }
             state.selectedStudentFamilyMembers = [...state.selectedStudentFamilyMembers, newFamilyMember];
-
         },
+        setStudentFields: (state, action) => {
+            state.selectedStudent.firstName = action.payload.firstName;
+            state.selectedStudent.lastName = action.payload.lastName;
+            state.selectedStudent.dateOfBirth =  action.payload.dateOfBirth;
+            state.selectedStudent.nationalityId = action.payload.nationalityId;
+            if(!state.studentNationality)
+            {
+                state.studentNationality ={natioalityId: action.payload.nationalityId}   
+            } 
+            else{
+                state.studentNationality.nationalityId = action.payload.nationalityId;
+            }           
+        },
+        setFamilyMemberFields: (state, action) => {
+            const familyMember = state.selectedStudentFamilyMembers.find((fm)=>(fm.id === action.payload.id));            
+            familyMember.firstName = action.payload.firstName;
+            familyMember.lastName = action.payload.lastName;
+            familyMember.dateOfBirth =  action.payload.dateOfBirth;
+            familyMember.relationshipId =action.payload.relationshipId;
+            familyMember.nationalityId =action.payload.nationalityId;            
+        },
+        removeFamilyMember:(state, action)=>{
+            state.selectedStudentFamilyMembers = state.selectedStudentFamilyMembers.filter((fm)=>(fm.id!==action.payload));
+        }
     },
     extraReducers: (builder) => {
         builder.addCase(getStudents.pending, (state) => {
@@ -331,7 +377,7 @@ export const studentsSlice = createSlice({
     },
 });
 
-export const { changeRole, setSelectStudent, clearSelection, addNewFamilyMember, clearNotification } = studentsSlice.actions;
+export const { changeRole, setSelectStudent, clearSelection, addNewFamilyMember, clearNotification, setFamilyMemberFields, removeFamilyMember, setStudentFields } = studentsSlice.actions;
 
 // Action creators are generated for each case reducer function
 export default studentsSlice.reducer;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { changeRole } from '../Redux/StudentSlice';
 import {
@@ -35,4 +35,4 @@ function TopNav(args) {
   );
 }
 
-export default TopNav;
+export default memo(TopNav);
